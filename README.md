@@ -53,6 +53,14 @@ These percentages describe detected source files, not the completeness of the
 stack. In particular, Docker, LangGraph, and RAG are not separate language
 categories. See the live [GitHub language breakdown](https://github.com/yocase11/AeroSense-AI/languages).
 
+### Technology breakdown
+
+| Area | What it does | Implementation in this repository |
+| --- | --- | --- |
+| RAG | Retrieves document passages with source references. | PDF/TXT/Markdown extraction, chunking, Gemini embeddings, pgvector cosine search, and lexical fallback in `backend/rag.py`. |
+| LLM and agents | Builds evidence-grounded investigations and answers. | Gemini Developer API or Vertex AI for generation; LangGraph coordinates specialist agents in `backend/agents.py`. |
+| Docker | Runs the platform services in containers. | Compose starts the API, frontend, PostgreSQL, and Redis; optional profiles add Kafka or Airflow. |
+
 ## Keep the workspace small
 
 Python environments, npm dependencies/build output, local databases, secrets,
