@@ -39,6 +39,20 @@ transitive dependency of LangGraph. Document retrieval is implemented in
 LangChain's retriever or vector-store APIs. GitHub's language percentages count
 tracked source lines, not frameworks, dependencies, or platform features.
 
+## Language breakdown
+
+GitHub currently reports this approximate language mix for the repository:
+
+| GitHub language | Share | Main use |
+| --- | ---: | --- |
+| Python | 87.8% | Backend, ingestion, agents, RAG, and Power BI builder. |
+| TypeScript | 10.4% | Next.js dashboard. |
+| Other | 1.8% | CSS, Dockerfiles, Mako migration templates, and JavaScript. |
+
+These percentages describe detected source files, not the completeness of the
+stack. In particular, Docker, LangGraph, and RAG are not separate language
+categories. See the live [GitHub language breakdown](https://github.com/yocase11/AeroSense-AI/languages).
+
 ## Keep the workspace small
 
 Python environments, npm dependencies/build output, local databases, secrets,
