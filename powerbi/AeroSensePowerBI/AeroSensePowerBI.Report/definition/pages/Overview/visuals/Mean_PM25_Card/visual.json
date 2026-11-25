@@ -1,0 +1,38 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.7.0/schema.json",
+  "name": "mean_pm25_card",
+  "position": {
+    "x": 24,
+    "y": 116,
+    "z": 2,
+    "height": 92,
+    "width": 240,
+    "tabOrder": 2
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "vw_pm25_hourly"
+                    }
+                  },
+                  "Property": "Mean PM2.5 (µg/m³)"
+                }
+              },
+              "queryRef": "vw_pm25_hourly.Mean PM2.5 (µg/m³)",
+              "nativeQueryRef": "Mean PM2.5 (µg/m³)"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

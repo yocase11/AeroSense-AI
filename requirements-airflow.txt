@@ -1,0 +1,2 @@
+# Use the hash-pinned Airflow 2.11.1 / Python 3.12 lock.
+-r requirements-airflow.lock

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.7.0/schema.json",
+  "name": "city_hours_card",
+  "position": {
+    "x": 276,
+    "y": 116,
+    "z": 3,
+    "height": 92,
+    "width": 220,
+    "tabOrder": 3
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "vw_pm25_hourly"
+                    }
+                  },
+                  "Property": "Observed City-Hours"
+                }
+              },
+              "queryRef": "vw_pm25_hourly.Observed City-Hours",
+              "nativeQueryRef": "Observed City-Hours"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

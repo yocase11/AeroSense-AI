@@ -1,0 +1,130 @@
+table vw_pm25_hourly
+	lineageTag: d95f2ce1-ca4d-5c97-9cc0-5ae04c6ec11a
+
+	measure 'Mean PM2.5 (µg/m³)' = AVERAGE('vw_pm25_hourly'[pm25_mean_ug_m3])
+		formatString: 0.0
+		lineageTag: 441aaf2e-5df6-5ad8-9d09-190ec9280b19
+
+	measure 'Observed City-Hours' = COUNTROWS('vw_pm25_hourly')
+		formatString: #,0
+		lineageTag: 8d920478-1caf-5689-9033-aeaf077a4000
+
+	measure 'Mean Wind Speed (km/h)' = AVERAGE('vw_pm25_hourly'[wind_speed_kmh])
+		formatString: 0.0
+		lineageTag: edece2cc-1e15-545a-a1d3-6595b0f8378d
+
+	measure 'Mean Stations per City-Hour' = AVERAGE('vw_pm25_hourly'[pm25_station_count])
+		formatString: 0.0
+		lineageTag: d97d0a7a-871a-581a-b5ef-7348934c29ab
+
+column city_id
+	dataType: string
+	summarizeBy: none
+	sourceColumn: city_id
+	lineageTag: b37f74b0-555e-54e0-88dc-69dfcd88a8de
+
+column city_name
+	dataType: string
+	summarizeBy: none
+	sourceColumn: city_name
+	lineageTag: be919181-613b-589f-a4b5-0f3993557748
+
+column hour_utc
+	dataType: dateTime
+	formatString: General Date
+	summarizeBy: none
+	sourceColumn: hour_utc
+	lineageTag: 016d04b7-ae1a-5674-be6c-f393d341255f
+
+column hour_ist
+	dataType: dateTime
+	formatString: General Date
+	summarizeBy: none
+	sourceColumn: hour_ist
+	lineageTag: 22acb49e-0b2f-557b-9db0-3b30f0af016b
+
+column local_hour
+	dataType: int64
+	formatString: 0
+	summarizeBy: none
+	sourceColumn: local_hour
+	lineageTag: 0bfeecf3-c106-56f0-8c4d-b68bcad07294
+
+column local_weekday_num
+	dataType: int64
+	formatString: 0
+	summarizeBy: none
+	sourceColumn: local_weekday_num
+	lineageTag: f5fdca9a-6157-5e22-b411-6929a99d8925
+
+column local_weekday
+	dataType: string
+	summarizeBy: none
+	sourceColumn: local_weekday
+	lineageTag: 9f031a3c-5e55-597a-8e07-3e4dcc4c85bf
+	sortByColumn: local_weekday_num
+
+column pm25_mean_ug_m3
+	dataType: double
+	formatString: 0.0
+	summarizeBy: none
+	sourceColumn: pm25_mean_ug_m3
+	lineageTag: a926324c-d698-5ebf-9a6b-8713e3731899
+
+column pm25_measurement_count
+	dataType: int64
+	formatString: 0
+	summarizeBy: none
+	sourceColumn: pm25_measurement_count
+	lineageTag: 823b1334-c877-5856-9db6-e600b2f7c899
+
+column pm25_station_count
+	dataType: int64
+	formatString: 0
+	summarizeBy: none
+	sourceColumn: pm25_station_count
+	lineageTag: 6008a65e-dcf8-53a5-a2ce-2da361de1f69
+
+column temperature_c
+	dataType: double
+	formatString: 0.0
+	summarizeBy: none
+	sourceColumn: temperature_c
+	lineageTag: 87657f6a-81aa-5b43-bf41-c8de49c4614a
+
+column wind_speed_kmh
+	dataType: double
+	formatString: 0.0
+	summarizeBy: none
+	sourceColumn: wind_speed_kmh
+	lineageTag: 182de319-6496-5e00-bc0b-ea2d3b12bbb6
+
+column humidity_pct
+	dataType: double
+	formatString: 0.0
+	summarizeBy: none
+	sourceColumn: humidity_pct
+	lineageTag: d1ee3f6e-d2bc-54a1-a253-cd152718aaee
+
+column precipitation_mm
+	dataType: double
+	formatString: 0.00
+	summarizeBy: none
+	sourceColumn: precipitation_mm
+	lineageTag: 5723cf15-b9be-5037-b553-74086566fcf0
+
+	partition vw_pm25_hourly = m
+		mode: import
+		source =
+			let
+				Source = PostgreSQL.Database("localhost:5432", "aerosense", [Query = "SELECT * FROM public.vw_pm25_hourly"]),
+				Typed = Table.TransformColumnTypes(Source, {{
+					{"hour_utc", type datetime}, {"hour_ist", type datetime},
+					{"local_hour", Int64.Type}, {"local_weekday_num", Int64.Type},
+					{"pm25_mean_ug_m3", type number}, {"pm25_measurement_count", Int64.Type},
+					{"pm25_station_count", Int64.Type}, {"temperature_c", type number},
+					{"wind_speed_kmh", type number}, {"humidity_pct", type number},
+					{"precipitation_mm", type number}
+				}})
+			in
+				Typed

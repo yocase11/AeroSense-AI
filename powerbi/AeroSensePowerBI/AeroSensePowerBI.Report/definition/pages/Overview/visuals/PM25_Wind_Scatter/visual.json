@@ -1,0 +1,75 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.7.0/schema.json",
+  "name": "pm25_wind_scatter",
+  "position": {
+    "x": 806,
+    "y": 224,
+    "z": 6,
+    "height": 472,
+    "width": 450,
+    "tabOrder": 6
+  },
+  "visual": {
+    "visualType": "scatterChart",
+    "query": {
+      "queryState": {
+        "Details": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "vw_pm25_hourly"
+                    }
+                  },
+                  "Property": "city_name"
+                }
+              },
+              "queryRef": "vw_pm25_hourly.city_name",
+              "nativeQueryRef": "city_name",
+              "active": true
+            }
+          ]
+        },
+        "X": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "vw_pm25_hourly"
+                    }
+                  },
+                  "Property": "wind_speed_kmh"
+                }
+              },
+              "queryRef": "vw_pm25_hourly.wind_speed_kmh",
+              "nativeQueryRef": "wind_speed_kmh"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "vw_pm25_hourly"
+                    }
+                  },
+                  "Property": "Mean PM2.5 (µg/m³)"
+                }
+              },
+              "queryRef": "vw_pm25_hourly.Mean PM2.5 (µg/m³)",
+              "nativeQueryRef": "Mean PM2.5 (µg/m³)"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

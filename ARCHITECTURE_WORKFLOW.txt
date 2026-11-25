@@ -1,0 +1,213 @@
+AEROSENSE AI
+ARCHITECTURE, WORKFLOW, AND CURRENT BUILD STATUS
+Updated: 2026-11-24
+
+1. PRODUCT OVERVIEW
+
+AeroSense has two application paths:
+
+- The original compact Streamlit monitor remains in app.py and air_quality.py.
+  It uses a bounded SQLite history and covers Chennai, Delhi, Mumbai, and
+  Bengaluru.
+- AeroSense 2.0 is the larger platform: FastAPI backend, PostgreSQL data
+  store, provider ingestion, environmental analytics, LangGraph
+  investigations, and a Next.js web dashboard.
+
+The original monitor was retained rather than rewritten. The 2.0 platform is
+the current Docker Compose application.
+
+2. HIGH-LEVEL ARCHITECTURE
+
+External sources
+    OpenAQ, Open-Meteo, NASA POWER, NASA FIRMS, Copernicus CAMS,
+    GDELT, and OpenStreetMap/Overpass
+        |
+        v
+Provider adapters and bounded HTTP client
+        |
+        v
+Parsing, validation, provenance, and unit normalization
+        |
+        v
+PostgreSQL: raw payloads, normalized observations, events, and app records
+    PostGIS coordinates; pgvector document embeddings
+        |
+        +---------------------> FastAPI endpoints
+        |                           |
+        |                           +--> Next.js dashboard
+        |                           +--> Redis-backed live events/SSE
+        |                           +--> Forecasts and reports
+        |                           +--> LangGraph investigations
+        |
+        +--> Optional Kafka event mirror
+        +--> Optional Airflow ingestion scheduling
+
+3. DATA INGESTION WORKFLOW
+
+1. A developer/operator starts a bounded ingestion pass with
+   `python -m data_engineering.ingest_once`. Airflow can schedule ingestion
+   when its optional profile is enabled.
+2. The integration catalog checks which providers are configured. OpenAQ,
+   NASA FIRMS, and CAMS need credentials; Open-Meteo products do not.
+3. Provider adapters request and parse source responses. The HTTP client uses
+   timeouts, bounded retries for transient errors, and a 10 MB response limit.
+4. Ingestion validates timestamps, values, coordinates, units, and source
+   identity. Accepted units are converted to canonical units; rejected records
+   are counted rather than silently treated as valid measurements.
+5. Raw provider payloads and normalized records are stored separately.
+   Provider observation time and ingestion time are retained independently.
+   Source, city, station, sensor, quality, and provenance fields remain
+   attached where supplied.
+6. Ingestion derives station-level anomaly/alert records and persists run
+   status, including accepted and rejected counts.
+7. Redis can publish changes to connected clients; Kafka is an optional event
+   mirror. Dashboard requests read stored records and do not poll providers.
+8. Retention cleanup is available through `python -m backend.retention`.
+
+The platform seeds five cities: Chennai, Bengaluru, Hyderabad, Mumbai, and
+Delhi. Missing credentials or provider failures are reported as unavailable
+or degraded sources; the application does not fabricate observations.
+
+4. STORAGE AND DATA QUALITY
+
+- PostgreSQL is the AeroSense 2.0 primary database. The database image includes
+  PostGIS and pgvector; Alembic manages schema migrations.
+- `source_observations` is the canonical station-aware observation store.
+  `raw_api_payloads` stores response snapshots separately.
+- Other records include cities, providers, stations/sensors, ingestion runs,
+  environmental events, forecasts/evaluations, anomalies, alerts, reports,
+  documents/chunks, users, sessions, and investigation/task evidence.
+- Raw payloads default to 30-day retention, observations to 365 days, and
+  events to 180 days. These limits are configurable.
+- Canonical units include micrograms per cubic metre for pollutants, Celsius
+  for temperature, kilometres per hour for wind, and the provider units for
+  other supported measurements. Original units are retained for provenance.
+- Open-Meteo and CAMS air-quality values are modeled products, not ground
+  station measurements. NASA FIRMS, GDELT, and map features are context, not
+  proof that an event caused a pollution change.
+
+5. ANALYTICS AND INVESTIGATIONS
+
+- AQI and threshold alerts use station-level windows and India AQI
+  breakpoints. The result is an estimate, not an official CPCB reading.
+- Anomaly detection uses a transparent historical median/MAD spike heuristic
+  for particulate measurements. It is an alert, not a causal diagnosis.
+- Forecasting uses a station-specific Random Forest baseline trained on
+  quality-valid OpenAQ observations. It avoids mixing stations and modeled
+  air-quality values. One-step holdout metrics are separate from recursive
+  6/12/24/48-hour rolling-origin backtests. Each horizon is compared with
+  last-observation persistence; a horizon score is stored only when at least
+  10 valid target pairs exist, otherwise the UI reports that the backtest
+  window is insufficient. These small-window metrics are not a production
+  accuracy guarantee.
+- The LangGraph investigation flow has a supervisor, specialist data tools,
+  a risk assessment step, and final synthesis. Specialists query persisted
+  evidence for air quality, weather, fires, events, forecasts, anomalies, and
+  documents. Results and citations are stored with the investigation.
+- Gemini synthesis is optional and is instructed to use cited evidence and
+  avoid unsupported causal claims. Model failover and a source-cited,
+  evidence-only fallback are implemented. Observed Gemini API 503 responses
+  still result in the fallback rather than a generated explanation; code
+  cannot guarantee a generated answer while the provider is unavailable.
+- Both Gemini API-key and optional Vertex AI generation paths are implemented.
+  The current running configuration uses the API-key provider. Vertex AI
+  project/region settings and a read-only Docker credentials overlay exist,
+  but Vertex credentials are not configured, so live Vertex generation has
+  not been verified.
+- Document ingestion accepts supported PDF, TXT, and Markdown files, with a
+  5 MB file limit and a 250-page PDF limit. Gemini embeddings are optional;
+  configured Gemini embeddings use pgvector search, while an unconfigured
+  Gemini key uses lexical document search.
+
+6. API, WEB APP, AND AUTHENTICATION
+
+- FastAPI exposes versioned `/api/v1` endpoints for dashboard data, cities,
+  air quality, weather, forecasts, sources, events, anomalies, knowledge,
+  investigations, alerts, reports, and authentication.
+- Next.js is the browser UI; provider credentials remain server-side.
+- All API routes require an authenticated database-backed session. Login
+  uses opaque session cookies, CSRF protection, password hashing, throttling,
+  refresh-token rotation, and logout revocation.
+- Public registration creates viewer accounts. Viewers, analysts, and admins
+  can use the operational API features, including forecasting, report
+  generation, knowledge search, alert acknowledgement, investigations, and
+  document uploads when uploads are enabled.
+- Investigation and report records remain owner-scoped; admins can access
+  records across owners. Account provisioning and password reset remain
+  trusted-host CLI operations, not public API actions.
+- Document uploads are controlled by `ALLOW_DOCUMENT_UPLOADS`. The current
+  local configuration has uploads enabled, so public viewer accounts can
+  upload documents within the file limits above.
+
+7. LOCAL CONTAINER WORKFLOW
+
+Docker Compose services:
+
+- Default/core: PostgreSQL/PostGIS/pgvector (`db`), FastAPI (`api`), Redis
+  (`redis`), and Next.js (`frontend`).
+- Kafka (`streaming`) and Airflow (`airflow`) are optional Compose profiles,
+  not requirements for the current five-city workload. Keep them stopped in
+  the normal lean setup; enable Kafka only when consumers need a durable event
+  stream and Airflow only when ingestion scheduling/monitoring justifies its
+  operational cost. Redis currently supports live event delivery and remains
+  in the core setup.
+- The legacy Streamlit application can still be run separately.
+
+At the last local check on 2026-11-24, API, database, Redis, frontend, Kafka,
+and Airflow containers were running. PostgreSQL and Redis were healthy. The
+API readiness endpoint reported ready, with database connected and
+authentication configured. The dashboard is served at localhost:3000 and the
+API at localhost:8000.
+
+8. WHAT IS BUILT
+
+- Preserved Streamlit/SQLite monitor and added the AeroSense 2.0 platform.
+- FastAPI API, SQLAlchemy data models, Alembic migrations, and Docker Compose
+  deployment.
+- Provider adapters, raw/normalized data persistence, quality validation,
+  provenance, source health, and bounded ingestion/retention commands.
+- PostgreSQL spatial/vector data support, provider/event data, AQI and alert
+  calculations, anomaly detection, and a station-specific forecast baseline.
+- Authenticated user registration/login, viewer/analyst/admin roles, owner
+  checks, and trusted-host admin/user provisioning.
+- Next.js dashboard, live update path, knowledge document ingestion/search,
+  and evidence-grounded LangGraph investigations with Gemini fallback.
+- Optional Redis, Kafka, Airflow, and Vertex AI configuration paths.
+
+9. CURRENT VERIFICATION AND LIMITS
+
+- Latest API integration run: 20 tests passed.
+- Forecasting/platform unit tests: 5 passed, including a 48-hour backtest
+  becoming available only when the minimum real-window count is met.
+- Production Docker builds for API and frontend passed. The Next.js build ran
+  its lint and type checks; after deployment, API readiness returned `ready`
+  and the frontend returned HTTP 200.
+- Docker Compose API image was rebuilt; `/health/ready` reported the database
+  connected and authentication configured.
+- A prior full test run had one unrelated error because `netCDF4` was not
+  installed for a CAMS parser test; the API integration tests passed.
+- Vertex AI has not made a live request because ADC credentials are not
+  configured. A live check with the configured Gemini API-key provider returned
+  504 from `gemini-3.6-flash` and 503 from `gemini-3.8-flash` and
+  `gemini-3.1-flash-lite` (high demand). The application returned its
+  source-cited evidence summary, not generated Gemini text. This is a provider
+  availability issue; no code change can guarantee service recovery.
+- The last local-data inspection found 1,731 observations overall, but only
+  about 1-3 OpenAQ samples per station/metric in the preceding 30 days. This
+  is below the 48-sample forecast training minimum and explains why no honest
+  trained forecast/backtest can be shown for most stations. No historical
+  backfill was run as part of this work; it can add real data but also makes
+  external API requests and increases database size.
+- Anomaly, alert, event, and document views now explain empty/insufficient
+  states instead of implying that no risk exists or creating placeholder
+  records.
+- The platform is not production-ready solely because tests pass. Remaining
+  work includes restoring access to a healthy Gemini model or configuring
+  Vertex ADC and then verifying a live generated response, collecting enough
+  real OpenAQ history, broader temporal
+  forecasting evaluation across additional stations and periods, production
+  deployment review, backups/recovery testing, and independent security
+  review.
+
+No passwords, API keys, tokens, or other credentials are included in this
+file. Keep `.env` and cloud credential files out of source control.

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.7.0/schema.json",
+  "name": "mean_wind_card",
+  "position": {
+    "x": 508,
+    "y": 116,
+    "z": 4,
+    "height": 92,
+    "width": 222,
+    "tabOrder": 4
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "vw_pm25_hourly"
+                    }
+                  },
+                  "Property": "Mean Wind Speed (km/h)"
+                }
+              },
+              "queryRef": "vw_pm25_hourly.Mean Wind Speed (km/h)",
+              "nativeQueryRef": "Mean Wind Speed (km/h)"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

@@ -1,0 +1,12 @@
+services:
+  api:
+    environment:
+      GEMINI_PROVIDER: vertex_ai
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:?Set GOOGLE_CLOUD_PROJECT in .env}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-us-central1}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google-application-default-credentials.json
+    volumes:
+      - type: bind
+        source: ${GOOGLE_APPLICATION_CREDENTIALS_FILE:?Set GOOGLE_APPLICATION_CREDENTIALS_FILE in .env}
+        target: /run/secrets/google-application-default-credentials.json
+        read_only: true

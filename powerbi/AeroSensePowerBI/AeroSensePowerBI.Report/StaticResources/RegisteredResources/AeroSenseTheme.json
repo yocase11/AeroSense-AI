@@ -1,0 +1,15 @@
+{
+  "name": "AeroSense",
+  "dataColors": [
+    "#0E7490",
+    "#F97316",
+    "#4F46E5",
+    "#16A34A",
+    "#D946EF",
+    "#EAB308",
+    "#DC2626"
+  ],
+  "background": "#F5F7FA",
+  "foreground": "#15324B",
+  "tableAccent": "#0E7490"
+}

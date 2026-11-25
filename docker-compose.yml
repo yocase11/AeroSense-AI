@@ -1,0 +1,163 @@
+services:
+  db:
+    build:
+      context: .
+      dockerfile: database/Dockerfile
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aerosense}
+      POSTGRES_USER: ${POSTGRES_USER:-aerosense}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set a unique URL-safe POSTGRES_PASSWORD in .env}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aerosense} -d ${POSTGRES_DB:-aerosense}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - aerosense_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+    command: ["redis-server", "--save", "60", "1", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        AEROSENSE_REQUIREMENTS_LOCK: ${AEROSENSE_REQUIREMENTS_LOCK:-requirements-prod.lock}
+    environment:
+      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER:-aerosense}:${POSTGRES_PASSWORD:?Set a unique URL-safe POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-aerosense}"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-lax}
+      OPENAQ_API_KEY: ${OPENAQ_API_KEY:-}
+      NASA_FIRMS_MAP_KEY: ${NASA_FIRMS_MAP_KEY:-}
+      CAMS_API_KEY: ${cams:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_PROVIDER: ${GEMINI_PROVIDER:-api_key}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-us-central1}
+      REDIS_URL: redis://redis:6379/0
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-}
+      ALLOW_DOCUMENT_UPLOADS: ${ALLOW_DOCUMENT_UPLOADS:-false}
+      AQI_ALERT_THRESHOLD: ${AQI_ALERT_THRESHOLD:-100}
+      OBSERVATION_RETENTION_DAYS: ${OBSERVATION_RETENTION_DAYS:-365}
+      RAW_PAYLOAD_RETENTION_DAYS: ${RAW_PAYLOAD_RETENTION_DAYS:-30}
+      EVENT_RETENTION_DAYS: ${EVENT_RETENTION_DAYS:-180}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+
+  ingestion:
+    image: airquality-api
+    environment:
+      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER:-aerosense}:${POSTGRES_PASSWORD:?Set a unique URL-safe POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-aerosense}"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-lax}
+      OPENAQ_API_KEY: ${OPENAQ_API_KEY:-}
+      NASA_FIRMS_MAP_KEY: ${NASA_FIRMS_MAP_KEY:-}
+      CAMS_API_KEY: ${cams:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_PROVIDER: ${GEMINI_PROVIDER:-api_key}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-us-central1}
+      REDIS_URL: redis://redis:6379/0
+      KAFKA_BOOTSTRAP_SERVERS: ""
+      ALLOW_DOCUMENT_UPLOADS: ${ALLOW_DOCUMENT_UPLOADS:-false}
+      AQI_ALERT_THRESHOLD: ${AQI_ALERT_THRESHOLD:-100}
+      OBSERVATION_RETENTION_DAYS: ${OBSERVATION_RETENTION_DAYS:-365}
+      RAW_PAYLOAD_RETENTION_DAYS: ${RAW_PAYLOAD_RETENTION_DAYS:-30}
+      EVENT_RETENTION_DAYS: ${EVENT_RETENTION_DAYS:-180}
+    depends_on:
+      api:
+        condition: service_healthy
+    command: ["python", "-m", "data_engineering.ingest_schedule"]
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000/api/v1}
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+
+  kafka:
+    image: apache/kafka:3.9.0@sha256:fbc7d7c428e3755cf36518d4976596002477e4c052d1f80b5b9eafd06d0fff2f
+    profiles: ["streaming"]
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+    ports:
+      - "127.0.0.1:9092:29092"
+    volumes:
+      - aerosense_kafka_data:/var/lib/kafka/data
+
+  airflow:
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile
+      additional_contexts:
+        aerosense-api: service:api
+    profiles: ["airflow"]
+    environment:
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER:-aerosense}:${POSTGRES_PASSWORD:?Set a unique URL-safe POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-aerosense}"
+      OPENAQ_API_KEY: ${OPENAQ_API_KEY:-}
+      NASA_FIRMS_MAP_KEY: ${NASA_FIRMS_MAP_KEY:-}
+      CAMS_API_KEY: ${cams:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      PYTHONPATH: /opt/airflow/project
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./:/opt/airflow/project:ro
+    command: ["bash", "-c", "airflow db migrate && airflow standalone"]
+
+volumes:
+  aerosense_pgdata:
+  aerosense_kafka_data:

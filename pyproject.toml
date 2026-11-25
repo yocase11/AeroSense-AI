@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools==84.1.0", "wheel==0.46.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aerosense-ai"
+version = "2.0.0"
+description = "Source-attributed environmental monitoring and intelligence platform"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.165.0",
+  "uvicorn[standard]==0.54.0",
+  "SQLAlchemy==2.1.9",
+  "psycopg[binary]==3.3.9",
+  "alembic==1.20.1",
+  "pgvector==0.5.1",
+  "pydantic==2.14.4",
+  "python-multipart==0.0.34",
+  "scikit-learn==1.9.1",
+  "shap==0.51.0",
+  "google-genai==1.75.0",
+  "langgraph==1.2.24",
+  "cdsapi==0.7.7",
+  "netCDF4==1.7.5.1",
+  "pypdf==6.21.4",
+  "redis==6.4.0",
+  "reportlab==4.5.1",
+]
+
+[project.optional-dependencies]
+streaming = ["kafka-python==2.3.2"]
+test = ["pytest==9.0.3", "httpx==0.28.1"]
+legacy-ui = ["streamlit==1.67.0"]
+
+[tool.setuptools]
+py-modules = ["air_quality"]
+
+[tool.setuptools.packages.find]
+include = ["backend*", "data_engineering*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "."]
+python_files = ["test_*.py"]
+

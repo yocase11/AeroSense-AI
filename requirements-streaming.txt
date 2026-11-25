@@ -1,0 +1,2 @@
+# Use the hash-pinned lock for the optional Kafka publisher.
+-r requirements-streaming.lock

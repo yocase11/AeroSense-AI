@@ -1,0 +1,76 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.7.0/schema.json",
+  "name": "pm25_weekday_hour_matrix",
+  "position": {
+    "x": 24,
+    "y": 116,
+    "z": 2,
+    "height": 580,
+    "width": 1232,
+    "tabOrder": 2
+  },
+  "visual": {
+    "visualType": "pivotTable",
+    "query": {
+      "queryState": {
+        "Rows": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "vw_pm25_hourly"
+                    }
+                  },
+                  "Property": "local_weekday"
+                }
+              },
+              "queryRef": "vw_pm25_hourly.local_weekday",
+              "nativeQueryRef": "local_weekday",
+              "active": true
+            }
+          ]
+        },
+        "Columns": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "vw_pm25_hourly"
+                    }
+                  },
+                  "Property": "local_hour"
+                }
+              },
+              "queryRef": "vw_pm25_hourly.local_hour",
+              "nativeQueryRef": "local_hour",
+              "active": true
+            }
+          ]
+        },
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "vw_pm25_hourly"
+                    }
+                  },
+                  "Property": "Mean PM2.5 (µg/m³)"
+                }
+              },
+              "queryRef": "vw_pm25_hourly.Mean PM2.5 (µg/m³)",
+              "nativeQueryRef": "Mean PM2.5 (µg/m³)"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

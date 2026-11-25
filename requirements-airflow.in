@@ -1,0 +1,2 @@
+# Airflow's runtime is isolated from the AeroSense application environment.
+apache-airflow==2.11.1
