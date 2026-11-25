@@ -19,6 +19,26 @@ requires an API key; Open-Meteo's weather and modeled air-quality products do
 not. Model-based products are identified separately from ground-station
 measurements.
 
+## Repository map
+
+| Path | Responsibility |
+| --- | --- |
+| `app.py`, `air_quality.py` | Original Streamlit monitor and its data logic. |
+| `backend/` | FastAPI routes, authentication, database access, integrations, ingestion, forecasting, agents, and RAG. |
+| `backend/agents.py` | LangGraph investigation workflow that gathers and cites evidence from specialist agents. |
+| `backend/rag.py` | Document extraction and chunking, Gemini embeddings, pgvector semantic search, and a lexical fallback. |
+| `frontend/` | Next.js and TypeScript dashboard. |
+| `database/` | PostgreSQL image and Alembic schema migrations, including PostGIS and pgvector setup. |
+| `data_engineering/`, `airflow/` | Ingestion commands and the optional Airflow DAG. |
+| `powerbi/` | Power BI report definition and dashboard builder. |
+| `Dockerfile`, `docker-compose*.yml` | Containerized API and local service stack, with optional deployment overlays. |
+
+The investigation orchestration uses LangGraph; `langchain-core` is a
+transitive dependency of LangGraph. Document retrieval is implemented in
+`backend/rag.py` using the Gemini SDK and PostgreSQL/pgvector rather than
+LangChain's retriever or vector-store APIs. GitHub's language percentages count
+tracked source lines, not frameworks, dependencies, or platform features.
+
 ## Keep the workspace small
 
 Python environments, npm dependencies/build output, local databases, secrets,
