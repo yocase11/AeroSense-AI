@@ -39,7 +39,11 @@ transitive dependency of LangGraph. Document retrieval is implemented in
 LangChain's retriever or vector-store APIs. GitHub's language percentages count
 tracked source lines, not frameworks, dependencies, or platform features.
 
-## Language breakdown
+## Languages and technology stack
+
+GitHub's automatic language panel reports programming-language usage only. This
+section adds the broader stack so the repository view also calls out RAG, LLM,
+and Docker.
 
 GitHub currently reports this approximate language mix for the repository:
 
